@@ -459,6 +459,7 @@ export default function App() {
   );
 }
 
+}
 // ─── Calendar ─────────────────────────────────────────────────────────────────
 function CalendarView({ year, month, reqs, ngs, staff, onAdd, onEdit }) {
   const days  = new Date(year, month, 0).getDate();
@@ -1868,5 +1869,4 @@ function ReqModal({ req, initDate, ngs, reqs, staff, employees, onSave, onClose,
       </div>
     </div>
   );
-}
 }
