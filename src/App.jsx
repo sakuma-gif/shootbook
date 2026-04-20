@@ -126,6 +126,10 @@ function useDialog() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  // Supabase初期化
+  useEffect(() => {
+    import('./supabase.js').then(({ supabase }) => { window._sb = supabase; });
+  }, []);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth()+1);
   const [view,  setView]  = useState("calendar");
@@ -143,31 +147,88 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      let base = REAL_STAFF;
-      try {
-        const r = await window.storage.get("staff");
-        if (r) base = JSON.parse(r.value).filter(s => !s.id.startsWith("s_test"));
-      } catch {}
-      const merged = [...base, ...TEST_STAFF];
-      setStaff(merged);
-      try {
-        const r = await window.storage.get("reqs");
-        if (r) setReqs(JSON.parse(r.value));
-        else { const sd = makeSeed(merged); setReqs(sd); window.storage.set("reqs", JSON.stringify(sd)).catch(()=>{}); }
-      } catch {}
-      try { const n = await window.storage.get("ngs"); if (n) setNgs(JSON.parse(n.value)); } catch {}
-      try { const e = await window.storage.get("employees"); if (e) setEmployees(JSON.parse(e.value)); } catch {}
+      const sb = window._sb;
+      if (!sb) { setTimeout(async () => {
+        const { supabase } = await import('./supabase.js');
+        window._sb = supabase;
+        loadData(supabase);
+      }, 500); return; }
+      loadData(sb);
     })();
   }, []);
 
-  const saveEmployees = async v => { setEmployees(v); try { await window.storage.set("employees", JSON.stringify(v)); } catch {} };
+  const loadData = async (sb) => {
+    // Staff
+    try {
+      const { data } = await sb.from('staff').select('*');
+      if (data && data.length > 0) {
+        setStaff([...data.map(s => ({ id:s.id, name:s.name, role:s.role, email:s.email||'' })), ...TEST_STAFF]);
+      } else {
+        for (const s of REAL_STAFF) await sb.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' });
+        setStaff([...REAL_STAFF, ...TEST_STAFF]);
+      }
+    } catch { setStaff([...REAL_STAFF, ...TEST_STAFF]); }
+    // Requests
+    try {
+      const { data } = await sb.from('requests').select('*');
+      if (data) setReqs(data.map(r => ({
+        id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
+        category:r.category, location:r.location, locationNote:r.location_note||'',
+        amount:r.amount||0, amountCamera:r.amount_camera||0, amountHairmake:r.amount_hairmake||0,
+        content:r.content, requester:r.requester, requesterEmpId:r.requester_emp_id||'',
+        requesterSlackId:r.requester_slack_id||'', staffId:r.staff_id||'',
+        staffIdHairmake:r.staff_id_hairmake||'', status:r.status||'pending',
+        komban:r.komban||'', compo:r.compo||'', note:r.note||'',
+        slackThreadUrl:r.slack_thread_url||'', eventUrl:r.event_url||'',
+      })));
+    } catch {}
+    // NG days
+    try {
+      const { data } = await sb.from('ng_days').select('*');
+      if (data) setNgs(data.map(n => ({ staffId:n.staff_id, date:n.date })));
+    } catch {}
+    // Employees
+    try {
+      const { data } = await sb.from('employees').select('*');
+      if (data && data.length > 0) setEmployees(data.map(e => ({ id:e.id, name:e.name, slackId:e.slack_id||'' })));
+    } catch {}
+  };
+
   const saveStaff = async v => {
     const withoutTest = v.filter(s => !s.id.startsWith("s_test"));
-    try { await window.storage.set("staff", JSON.stringify(withoutTest)); } catch {}
     setStaff([...withoutTest, ...TEST_STAFF]);
+    try { for (const s of withoutTest) await window._sb.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' }); } catch {}
   };
-  const saveReqs = async v => { setReqs(v); try { await window.storage.set("reqs", JSON.stringify(v)); } catch {} };
-  const saveNgs  = async v => { setNgs(v);  try { await window.storage.set("ngs",  JSON.stringify(v)); } catch {} };
+  const saveReqs = async v => {
+    setReqs(v);
+    try {
+      const ids = v.map(r => r.id);
+      const { data: all } = await window._sb.from('requests').select('id');
+      if (all) for (const row of all) if (!ids.includes(row.id)) await window._sb.from('requests').delete().eq('id', row.id);
+      for (const r of v) await window._sb.from('requests').upsert({
+        id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
+        category:r.category, location:r.location, location_note:r.locationNote||'',
+        amount:r.amount||0, amount_camera:r.amountCamera||0, amount_hairmake:r.amountHairmake||0,
+        content:r.content, requester:r.requester, requester_emp_id:r.requesterEmpId||'',
+        requester_slack_id:r.requesterSlackId||'', staff_id:r.staffId||'',
+        staff_id_hairmake:r.staffIdHairmake||'', status:r.status||'pending',
+        komban:r.komban||'', compo:r.compo||'', note:r.note||'',
+        slack_thread_url:r.slackThreadUrl||'', event_url:r.eventUrl||'',
+      });
+    } catch {}
+  };
+  const saveNgs = async v => {
+    setNgs(v);
+    try {
+      await window._sb.from('ng_days').delete().neq('id', 0);
+      for (const n of v) await window._sb.from('ng_days').insert({ staff_id:n.staffId, date:n.date });
+    } catch {}
+  };
+  const saveEmployees = async v => {
+    setEmployees(v);
+    try { for (const e of v) await window._sb.from('employees').upsert({ id:e.id, name:e.name, slack_id:e.slackId||'' }); } catch {}
+  };
+
 
   const handlePin = () => {
     if (pinInput === ADMIN_PIN) {
