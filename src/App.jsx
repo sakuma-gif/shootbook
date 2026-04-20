@@ -131,9 +131,6 @@ function useDialog() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  // Supabase初期化
-  useEffect(() => {
-    import('./supabase.js').then(({ supabase }) => { supabase = supabase; });
   }, []);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth()+1);
@@ -151,16 +148,7 @@ export default function App() {
   const dlg = useDialog();
 
   useEffect(() => {
-    (async () => {
-      const sb = supabase;
-      if (!sb) { setTimeout(async () => {
-        const { supabase } = await import('./supabase.js');
-        supabase = supabase;
-        loadData(supabase);
-      }, 500); return; }
-      loadData(sb);
-    })();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     // Staff
