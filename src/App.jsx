@@ -158,20 +158,20 @@ export default function App() {
     })();
   }, []);
 
-  const loadData = async (sb) => {
+  const loadData = async () => {
     // Staff
     try {
-      const { data } = await sb.from('staff').select('*');
+      const { data } = await supabase.from('staff').select('*');
       if (data && data.length > 0) {
         setStaff([...data.map(s => ({ id:s.id, name:s.name, role:s.role, email:s.email||'' })), ...TEST_STAFF]);
       } else {
-        for (const s of REAL_STAFF) await sb.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' });
+        for (const s of REAL_STAFF) await supabase.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' });
         setStaff([...REAL_STAFF, ...TEST_STAFF]);
       }
     } catch { setStaff([...REAL_STAFF, ...TEST_STAFF]); }
     // Requests
     try {
-      const { data } = await sb.from('requests').select('*');
+      const { data } = await supabase.from('requests').select('*');
       if (data) setReqs(data.map(r => ({
         id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
         category:r.category, location:r.location, locationNote:r.location_note||'',
@@ -185,12 +185,12 @@ export default function App() {
     } catch {}
     // NG days
     try {
-      const { data } = await sb.from('ng_days').select('*');
+      const { data } = await supabase.from('ng_days').select('*');
       if (data) setNgs(data.map(n => ({ staffId:n.staff_id, date:n.date })));
     } catch {}
     // Employees
     try {
-      const { data } = await sb.from('employees').select('*');
+      const { data } = await supabase.from('employees').select('*');
       if (data && data.length > 0) setEmployees(data.map(e => ({ id:e.id, name:e.name, slackId:e.slack_id||'' })));
     } catch {}
   };
