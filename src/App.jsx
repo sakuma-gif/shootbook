@@ -1,5 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from './supabase.js';
+import { createClient } from '@supabase/supabase-js';
+const supabase = createClient(
+  'https://vuwveaqwecvstqtmjmzz.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1d3ZlYXF3ZWN2c3RxdG1qbXp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NTEwOTgsImV4cCI6MjA5MjIyNzA5OH0.G24DwwyOTjMmgCL-P7jbABIJpali7MhY8AiOQb9tb-U'
+);
 
 const DEPTS = [
   { id:"d1", name:"配信1部", sub:"MC / Pococha / Kライバー", label:"MC / Pococha / Kライバー（配信1部）", color:"#7C3AED" },
