@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { supabase } from './supabase.js';
 
 const DEPTS = [
   { id:"d1", name:"配信1部", sub:"MC / Pococha / Kライバー", label:"MC / Pococha / Kライバー（配信1部）", color:"#7C3AED" },
@@ -128,7 +129,7 @@ function useDialog() {
 export default function App() {
   // Supabase初期化
   useEffect(() => {
-    import('./supabase.js').then(({ supabase }) => { window._sb = supabase; });
+    import('./supabase.js').then(({ supabase }) => { supabase = supabase; });
   }, []);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth()+1);
@@ -147,10 +148,10 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const sb = window._sb;
+      const sb = supabase;
       if (!sb) { setTimeout(async () => {
         const { supabase } = await import('./supabase.js');
-        window._sb = supabase;
+        supabase = supabase;
         loadData(supabase);
       }, 500); return; }
       loadData(sb);
@@ -197,15 +198,15 @@ export default function App() {
   const saveStaff = async v => {
     const withoutTest = v.filter(s => !s.id.startsWith("s_test"));
     setStaff([...withoutTest, ...TEST_STAFF]);
-    try { for (const s of withoutTest) await window._sb.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' }); } catch {}
+    try { for (const s of withoutTest) await supabase.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' }); } catch {}
   };
   const saveReqs = async v => {
     setReqs(v);
     try {
       const ids = v.map(r => r.id);
-      const { data: all } = await window._sb.from('requests').select('id');
-      if (all) for (const row of all) if (!ids.includes(row.id)) await window._sb.from('requests').delete().eq('id', row.id);
-      for (const r of v) await window._sb.from('requests').upsert({
+      const { data: all } = await supabase.from('requests').select('id');
+      if (all) for (const row of all) if (!ids.includes(row.id)) await supabase.from('requests').delete().eq('id', row.id);
+      for (const r of v) await supabase.from('requests').upsert({
         id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
         category:r.category, location:r.location, location_note:r.locationNote||'',
         amount:r.amount||0, amount_camera:r.amountCamera||0, amount_hairmake:r.amountHairmake||0,
@@ -220,13 +221,13 @@ export default function App() {
   const saveNgs = async v => {
     setNgs(v);
     try {
-      await window._sb.from('ng_days').delete().neq('id', 0);
-      for (const n of v) await window._sb.from('ng_days').insert({ staff_id:n.staffId, date:n.date });
+      await supabase.from('ng_days').delete().neq('id', 0);
+      for (const n of v) await supabase.from('ng_days').insert({ staff_id:n.staffId, date:n.date });
     } catch {}
   };
   const saveEmployees = async v => {
     setEmployees(v);
-    try { for (const e of v) await window._sb.from('employees').upsert({ id:e.id, name:e.name, slack_id:e.slackId||'' }); } catch {}
+    try { for (const e of v) await supabase.from('employees').upsert({ id:e.id, name:e.name, slack_id:e.slackId||'' }); } catch {}
   };
 
 
