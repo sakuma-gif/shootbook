@@ -131,7 +131,7 @@ function useDialog() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  }, []);
+  useEffect(() => { loadData(); }, []);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth()+1);
   const [view,  setView]  = useState("calendar");
@@ -1868,4 +1868,5 @@ function ReqModal({ req, initDate, ngs, reqs, staff, employees, onSave, onClose,
       </div>
     </div>
   );
+}
 }
