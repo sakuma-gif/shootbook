@@ -143,7 +143,6 @@ export default function App() {
   const dlg = useDialog();
 
   useEffect(() => {
-  useEffect(() => {
     const stored = localStorage.getItem("sb_reqs");
     if (stored) setReqs(JSON.parse(stored));
     const storedEmp = localStorage.getItem("sb_employees");
@@ -399,7 +398,6 @@ export default function App() {
       {dlg.node}
     </div>
   );
-}
 }
 
 
