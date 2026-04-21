@@ -126,7 +126,19 @@ function useDialog() {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const stored = localStorage.getItem("sb_reqs");
+    if (stored) setReqs(JSON.parse(stored));
+    const storedEmp = localStorage.getItem("sb_employees");
+    if (storedEmp) setEmployees(JSON.parse(storedEmp));
+    const storedStaff = localStorage.getItem("sb_staff");
+    if (storedStaff) {
+      const base = JSON.parse(storedStaff).filter(s => !s.id.startsWith("s_test"));
+      setStaff([...base, ...TEST_STAFF]);
+    }
+    const storedNgs = localStorage.getItem("sb_ngs");
+    if (storedNgs) setNgs(JSON.parse(storedNgs));
+  }, []);
   const [year,  setYear]  = useState(NOW.getFullYear());
   const [month, setMonth] = useState(NOW.getMonth()+1);
   const [view,  setView]  = useState("calendar");
