@@ -1,9 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { createClient } from '@supabase/supabase-js';
-const supabase = createClient(
-  'https://vuwveaqwecvstqtmjmzz.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1d3ZlYXF3ZWN2c3RxdG1qbXp6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NTEwOTgsImV4cCI6MjA5MjIyNzA5OH0.G24DwwyOTjMmgCL-P7jbABIJpali7MhY8AiOQb9tb-U'
-);
 
 const DEPTS = [
   { id:"d1", name:"配信1部", sub:"MC / Pococha / Kライバー", label:"MC / Pococha / Kライバー（配信1部）", color:"#7C3AED" },
@@ -148,79 +143,26 @@ export default function App() {
   const dlg = useDialog();
 
   useEffect(() => {
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    const stored = localStorage.getItem("sb_reqs");
+    if (stored) setReqs(JSON.parse(stored));
+    const storedEmp = localStorage.getItem("sb_employees");
+    if (storedEmp) setEmployees(JSON.parse(storedEmp));
+    const storedStaff = localStorage.getItem("sb_staff");
+    if (storedStaff) {
+      const base = JSON.parse(storedStaff).filter(s => !s.id.startsWith("s_test"));
+      setStaff([...base, ...TEST_STAFF]);
+    }
+  }, []);
 
-  const loadData = async () => {
-    // Staff
-    try {
-      const { data } = await supabase.from('staff').select('*');
-      if (data && data.length > 0) {
-        setStaff([...data.map(s => ({ id:s.id, name:s.name, role:s.role, email:s.email||'' })), ...TEST_STAFF]);
-      } else {
-        for (const s of REAL_STAFF) await supabase.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' });
-        setStaff([...REAL_STAFF, ...TEST_STAFF]);
-      }
-    } catch { setStaff([...REAL_STAFF, ...TEST_STAFF]); }
-    // Requests
-    try {
-      const { data } = await supabase.from('requests').select('*');
-      if (data) setReqs(data.map(r => ({
-        id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
-        category:r.category, location:r.location, locationNote:r.location_note||'',
-        amount:r.amount||0, amountCamera:r.amount_camera||0, amountHairmake:r.amount_hairmake||0,
-        content:r.content, requester:r.requester, requesterEmpId:r.requester_emp_id||'',
-        requesterSlackId:r.requester_slack_id||'', staffId:r.staff_id||'',
-        staffIdHairmake:r.staff_id_hairmake||'', status:r.status||'pending',
-        komban:r.komban||'', compo:r.compo||'', note:r.note||'',
-        slackThreadUrl:r.slack_thread_url||'', eventUrl:r.event_url||'',
-      })));
-    } catch {}
-    // NG days
-    try {
-      const { data } = await supabase.from('ng_days').select('*');
-      if (data) setNgs(data.map(n => ({ staffId:n.staff_id, date:n.date })));
-    } catch {}
-    // Employees
-    try {
-      const { data } = await supabase.from('employees').select('*');
-      if (data && data.length > 0) setEmployees(data.map(e => ({ id:e.id, name:e.name, slackId:e.slack_id||'' })));
-    } catch {}
-  };
-
-  const saveStaff = async v => {
+  const saveStaff = v => {
     const withoutTest = v.filter(s => !s.id.startsWith("s_test"));
     setStaff([...withoutTest, ...TEST_STAFF]);
-    try { for (const s of withoutTest) await supabase.from('staff').upsert({ id:s.id, name:s.name, role:s.role, email:s.email||'' }); } catch {}
+    localStorage.setItem("sb_staff", JSON.stringify(withoutTest));
   };
-  const saveReqs = async v => {
-    setReqs(v);
-    try {
-      const ids = v.map(r => r.id);
-      const { data: all } = await supabase.from('requests').select('id');
-      if (all) for (const row of all) if (!ids.includes(row.id)) await supabase.from('requests').delete().eq('id', row.id);
-      for (const r of v) await supabase.from('requests').upsert({
-        id:r.id, date:r.date, platforms:r.platforms||[], departments:r.departments||[],
-        category:r.category, location:r.location, location_note:r.locationNote||'',
-        amount:r.amount||0, amount_camera:r.amountCamera||0, amount_hairmake:r.amountHairmake||0,
-        content:r.content, requester:r.requester, requester_emp_id:r.requesterEmpId||'',
-        requester_slack_id:r.requesterSlackId||'', staff_id:r.staffId||'',
-        staff_id_hairmake:r.staffIdHairmake||'', status:r.status||'pending',
-        komban:r.komban||'', compo:r.compo||'', note:r.note||'',
-        slack_thread_url:r.slackThreadUrl||'', event_url:r.eventUrl||'',
-      });
-    } catch {}
-  };
-  const saveNgs = async v => {
-    setNgs(v);
-    try {
-      await supabase.from('ng_days').delete().neq('id', 0);
-      for (const n of v) await supabase.from('ng_days').insert({ staff_id:n.staffId, date:n.date });
-    } catch {}
-  };
-  const saveEmployees = async v => {
-    setEmployees(v);
-    try { for (const e of v) await supabase.from('employees').upsert({ id:e.id, name:e.name, slack_id:e.slackId||'' }); } catch {}
-  };
+  const saveReqs = v => { setReqs(v); localStorage.setItem("sb_reqs", JSON.stringify(v)); };
+  const saveNgs  = v => { setNgs(v); localStorage.setItem("sb_ngs", JSON.stringify(v)); };
+  const saveEmployees = v => { setEmployees(v); localStorage.setItem("sb_employees", JSON.stringify(v)); };
 
 
   const handlePin = () => {
